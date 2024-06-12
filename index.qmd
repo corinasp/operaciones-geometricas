@@ -1,0 +1,394 @@
+---
+title: "Operaciones con geometrías"
+author: "Corina Solano"
+format: revealjs
+---
+
+# Carga de paquetes
+
+```{r}
+#| label: carga-paquetes
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(DT)
+library(sf)
+library(leaflet)
+library(leaflet.extras)
+library(leafem)
+```
+
+# Carga de datos
+
+## Provincias
+
+```{r}
+#| label: carga-datos-provincias
+
+# Lectura y visualización de datos geoespaciales de provincias
+
+# Lectura
+provincias <-
+  st_read(
+    dsn = "provincias.geojson",
+    quiet = TRUE
+  )
+
+# Visualización en un mapa
+plot(
+  provincias$geometry,
+  extent = st_bbox(c(xmin = 280000, xmax = 660000, ymin = 880000, ymax= 1250000)),
+  main = "Provincias de Costa Rica",
+  axes = TRUE,
+  graticule = TRUE
+)
+```
+
+## Operaciones con geometrías
+
+## Simplificación
+
+```{r}
+
+
+# Lectura
+provincias <-
+  st_read(
+    dsn = "provincias.geojson",
+    quiet = TRUE
+  )
+
+# Visualización en un mapa
+plot(
+  provincias$geometry,
+  extent = st_bbox(c(xmin = 280000, xmax = 660000, ymin = 880000, ymax= 1250000)),
+  main = "Provincias de Costa Rica",
+  axes = TRUE,
+  graticule = TRUE
+)
+```
+
+```{r}
+# Lectura y visualización de datos geoespaciales de la red vial
+
+# Lectura
+red_vial <-
+  st_read(
+    dsn = "redvial.geojson",
+    quiet = TRUE
+  )
+
+# Visualización en un mapa
+plot(
+  red_vial$geometry,
+  extent = st_bbox(c(xmin = 280000, xmax = 660000, ymin = 880000, ymax= 1250000)),
+  main = "Red vial de Costa Rica",
+  axes = TRUE,
+  graticule = TRUE
+)
+```
+
+```{r}
+# Lectura y visualización de datos geoespaciales de mamíferos
+
+# Lectura
+mamiferos <-
+  st_read(
+    "mamiferos.csv",
+    options = c(
+      "X_POSSIBLE_NAMES=decimalLongitude", # columna de longitud decimal
+      "Y_POSSIBLE_NAMES=decimalLatitude"   # columna de latitud decimal
+    ),
+    quiet = TRUE
+  )
+
+# Asignación del CRS WGS84
+st_crs(mamiferos) <- 4326
+
+# Visualización en un mapa
+plot(
+  mamiferos$geometry,
+  pch = 16,
+  main = "Mamíferos de Costa Rica",
+  axes = TRUE,
+  graticule = TRUE
+)
+```
+
+```{r}
+# Simplificación de la capa de provincias
+
+# Simplificación sin preservación de topología
+provincias_simplificado <-
+  provincias |>
+  st_simplify(dTolerance = 5000, preserveTopology = FALSE)
+
+# Mapa de la capa de provincias con simplificación y sin preservación de topología
+plot(
+  provincias_simplificado$geometry,
+  extent = st_bbox(c(xmin = 280000, xmax = 660000, ymin = 880000, ymax= 1250000)),  
+  main = "Provincias simplificadas sin preservación de topología",
+  axes = TRUE,
+  graticule = TRUE)
+```
+
+```{r}
+# Simplificación con preservación de topología
+provincias_simplificado_topologia <-
+  provincias |>
+  st_simplify(dTolerance = 5000, preserveTopology = TRUE)
+
+# Mapa de la capa de provincias con simplificación y con preservación de topología
+plot(
+  provincias_simplificado_topologia$geometry,
+  extent = st_bbox(c(xmin = 280000, xmax = 660000, ymin = 880000, ymax= 1250000)),  
+  main = "Provincias simplificadas con preservación de topología",
+  axes = TRUE,
+  graticule = TRUE)
+```
+
+### Centroides
+
+```{r}
+#| label: centroide-01
+# Costa Rica y sus centroides calculados con st_centroid() y st_point_on_surface()
+
+# Mapa de provincias
+plot(
+  st_union(provincias), # unión de los polígonos de provincias
+  main = "Centroides de CR: st_centroid (rojo) y st_point_on_surface (verde)",
+  axes = TRUE,
+  graticule = TRUE)
+
+# Mapa del centroide calculado con st_centroid()
+plot(st_centroid(st_union(provincias)),
+     add = TRUE,
+     pch = 16,
+     col = "red")
+
+# Mapa del centroide calculado con st_point_on_surface()
+plot(
+  st_point_on_surface(st_union(provincias)),
+  add = TRUE,
+  pch = 16,
+  col = "green")
+```
+```{r}
+#| label: centroide-ruta-32
+
+# Ruta 32 y sus centroides calculados con st_centroid() y st_point_on_surface()
+
+# Polígonos de San José, Heredia y Limón
+sanjose_heredia_limon <-
+  provincias |>
+  filter(provincia == "San José" | provincia == "Heredia" | provincia == "Limón")
+
+# Línea de la ruta 32
+ruta_32 <-
+  red_vial |>
+  filter(num_ruta == "32")
+
+# Mapa de San José, Heredia y Limón
+plot(
+  sanjose_heredia_limon$geometry,
+  main = "Centroides de la ruta 32: st_centroid (rojo) y st_point_on_surface (verde)",
+  axes = TRUE,
+  graticule = TRUE)
+
+# Mapa de la ruta 32
+plot(
+  ruta_32$geometry,
+  add = TRUE,
+  lwd = 2,
+  col = "blue")
+
+# Mapa del centroide calculado con st_centroid()
+plot(
+  st_centroid(st_union(ruta_32)),
+  add = TRUE,
+  pch = 16,
+  col = "red")
+
+# Mapa del centroide calculado con st_point_on_surface()
+plot(
+  st_point_on_surface(st_union(ruta_32)),
+  add = TRUE,
+  pch = 16,
+  col = "green")
+```
+
+```{r}
+# Provincias de Costa Rica y sus centroides calculados con st_centroid() y st_point_on_surface()
+
+# Mapa de provincias
+plot(
+  provincias$geometry,
+  extent = st_bbox(c(xmin = 280000, xmax = 660000, ymin = 880000, ymax= 1250000)),  
+  main = "Centroides de provincias: st_centroid (rojo) y st_point_on_surface (verde)",
+  axes = TRUE,
+  graticule = TRUE)
+
+# Mapa de los centroides calculados con st_centroid()
+plot(st_centroid(provincias),
+     add = TRUE,
+     pch = 16,
+     col = "red")
+
+# Mapa de los centroides calculados con st_point_on_surface()
+plot(
+  st_point_on_surface(provincias),
+  add = TRUE,
+  pch = 16,
+  col = "green")
+```
+# Buffer
+
+```{r}
+# Buffer alrededor de la ruta 32
+
+# Buffer que rodea la ruta 32
+plot(
+  st_buffer(st_union(ruta_32), 5000),
+  main = "Buffer que rodea la ruta 32",
+  axes = TRUE,
+  graticule = TRUE)
+
+# Línea de la ruta 32
+plot(
+  ruta_32$geometry,
+  col = "blue",
+  add = TRUE
+)
+```
+ Especies de mamíferos en riesgo de atropello en ruta 32
+ 
+```{r}
+#| label: mamiferos-no-voladores
+# Registros de presencia de mamíferos no voladores
+mamiferos_no_voladores <-
+  mamiferos |>
+  filter(taxonRank == "SPECIES" | taxonRank == "SUBSPECIES") |> # para excluir identificaciones a género o superiores
+  filter(order != "Chiroptera") # se excluyen los murciélagos
+
+# Línea de la ruta 32
+ruta_32 <-
+  red_vial |>
+  filter(num_ruta == "32") |>
+  st_transform(4326)
+
+# Buffer de la ruta 32
+buffer_ruta_32 <-
+  ruta_32 |>
+  st_buffer(dist = 5000) |>
+  st_transform(4326)
+
+# Registros de presencia dentro del buffer
+mamiferos_buffer_ruta_32 <-
+  st_join(mamiferos_no_voladores, buffer_ruta_32) |>
+  filter(!is.na(codigo))
+
+# Mapa
+plot(
+  st_union(buffer_ruta_32),
+  main = "Mamíferos terrestres alrededor de la ruta 32",
+  axes = TRUE,
+  graticule = TRUE
+)
+
+plot(ruta_32$geometry,
+     col = "blue",
+     add = TRUE)
+
+plot(
+  mamiferos_buffer_ruta_32,
+  pch = 16,
+  col = "orange",
+  add = TRUE
+)
+```
+
+```{r}
+#| label: conteo-especies
+
+# Lista de especies
+lista_especies <-
+  mamiferos_buffer_ruta_32 |>
+  st_drop_geometry() |>
+  filter(!is.na(species) & species != "") |>
+  group_by(species) |>
+  summarise(registros = n()) |>
+  arrange(desc(registros)) |>
+  rename(especie = species)
+
+# Tabla
+lista_especies %>%
+  datatable(options = list(
+    pageLength = 10,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Spanish.json')
+  ))
+```
+
+# Mapa
+
+```{r}
+#| label: mapa
+
+# Mapa de mamíferos cerca de la ruta 32
+leaflet() |>
+  addTiles(group = "OpenStreetMap") |>
+  addPolygons(data = st_union(buffer_ruta_32),
+              group = "Buffer") |>
+  addHeatmap(
+    data = mamiferos_buffer_ruta_32,
+    lng = ~ decimalLongitude,
+    lat = ~ decimalLatitude,
+    radius = 10,
+    blur = 20,
+    group = "Mapa de calor"
+  ) |>
+  addPolylines(data = ruta_32,
+               group = "Ruta 32") |>
+  addCircleMarkers(
+    data = mamiferos_buffer_ruta_32,
+    radius = 1,
+    color = "black",
+    popup = paste(
+      mamiferos_buffer_ruta_32$species,
+      paste0(
+        "<a href='",
+        mamiferos_buffer_ruta_32$occurrenceID,
+        "'>Más información</a>"
+      ),
+      sep = '<br/>'
+    ),
+    clusterOptions = markerClusterOptions(),
+    group = "Registros de presencia"
+  ) |>
+  addLayersControl(
+    baseGroups = c("OpenStreetMap"),
+    overlayGroups = c("Buffer", "Mapa de calor", "Ruta 32", "Registros de presencia")
+  ) |>
+  addScaleBar(position = "bottomright", options = scaleBarOptions(imperial = FALSE))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
